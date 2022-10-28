@@ -1,0 +1,48 @@
+services:
+  nacos:
+    image: nacos/nacos-server:v2.1.1
+    container_name: nacos-standalone-mysql
+    env_file:
+      - ./env/nacos-standalone-mysql.env
+    volumes:
+    - ./logs/nacos/:/home/nacos/logs
+    ports:
+    - 8848:8848
+    - 9848:9848
+    - 9555:9555
+    depends_on:
+      redis:
+        condition: service_started
+      mysql:
+        condition: service_healthy
+    restart: always
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    command: -authentication_policy=mysql_native_password
+    restart: always
+    env_file:
+      # 配置文件按
+      - ./env/mysql.env
+    volumes:
+      # 初始化脚本
+    - ./mysql/init-sql/:/docker-entrypoint-initdb.d/
+      #根据宿主机下的配置文件创建容器
+    - ./mysql/conf/:/etc/mysql/conf.d
+      #映射mysql的数据目录到宿主机，保存数据
+    - ./mysql/data/:/var/lib/mysql
+    ports:
+    - 3306:3306
+    healthcheck:
+      test: ["CMD","mysqladmin","ping","-h","localhost"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+  redis:
+    container_name: redis
+    image: redis:6.2.7
+    volumes:
+      - ./redis/conf:/usr/local/etc/redis
+      - ./redis/data:/data
+    ports:
+      - 6379:6379
